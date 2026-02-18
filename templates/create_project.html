@@ -1,14 +1,88 @@
 <!DOCTYPE html>
+
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <link rel="stylesheet" href="/static/style.css">
+
+<style>
+/* Background */
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:linear-gradient(135deg,#020617,#0f172a);
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+/* Glass Form Box */
+.form-box{
+width:360px;
+padding:35px;
+border-radius:20px;
+background:rgba(30,41,59,0.75);
+backdrop-filter:blur(18px);
+box-shadow:0 25px 60px rgba(0,0,0,.6);
+text-align:center;
+}
+
+/* Heading */
+.form-box h2{
+margin-bottom:25px;
+font-weight:600;
+}
+
+/* Inputs */
+input,select{
+width:100%;
+padding:12px;
+margin:12px 0;
+border:none;
+border-radius:12px;
+background:#0f172a;
+color:white;
+font-size:14px;
+outline:none;
+}
+
+/* File input special */
+input[type=file]{
+background:transparent;
+}
+
+/* Button */
+button{
+width:100%;
+padding:14px;
+margin-top:15px;
+border:none;
+border-radius:30px;
+font-size:16px;
+font-weight:600;
+color:white;
+cursor:pointer;
+background:linear-gradient(135deg,#00e5ff,#00bcd4);
+box-shadow:0 10px 25px rgba(0,188,212,.5);
+transition:.3s;
+}
+
+button:hover{
+transform:translateY(-2px);
+box-shadow:0 14px 35px rgba(0,188,212,.8);
+}
+</style>
+
 </head>
 
 <body>
 
 <div class="form-box">
 
-<h2>Create New AR Project</h2>
+<h2>🚀 Create New AR Project</h2>
 
 <form action="/save" method="POST" enctype="multipart/form-data">
 
