@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Forgot PIN</title>
+
+<style>
+body{
+margin:0;
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:radial-gradient(circle,#020617,#0f172a);
+font-family:Segoe UI;
+color:white;
+}
+
+.card{
+background:rgba(30,41,59,.7);
+padding:40px;
+border-radius:20px;
+text-align:center;
+backdrop-filter:blur(18px);
+box-shadow:0 25px 60px rgba(0,0,0,.8);
+width:340px;
+}
+
+input{
+width:100%;
+padding:14px;
+border:none;
+border-radius:12px;
+margin:15px 0;
+background:#020617;
+color:white;
+}
+
+button{
+width:100%;
+padding:14px;
+border:none;
+border-radius:30px;
+background:linear-gradient(135deg,#00e5ff,#00bcd4);
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>📧 Reset PIN</h2>
+
+<form action="/send-otp" method="POST">
+<input name="email" placeholder="Enter Email Address" required>
+<button>Send OTP</button>
+</form>
+
+</div>
+
+</body>
+</html>
