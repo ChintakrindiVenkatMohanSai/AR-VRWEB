@@ -1,4 +1,11 @@
 venv/
 __pycache__/
+*.pyc
 projects.db
 uploads/*
+!uploads/.gitkeep
+.env
+.vscode/
+*.log
+.DS_Store
+Thumbs.db

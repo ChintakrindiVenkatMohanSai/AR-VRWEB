@@ -3,8 +3,10 @@ import sqlite3, os
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
 
+
+# ---------- PATH SETUP ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 DB_PATH = os.path.join(BASE_DIR, "projects.db")
@@ -55,19 +57,19 @@ def dashboard():
     return render_template("dashboard.html", projects=projects)
 
 
-# ---------- IMAGE AR ROUTE (FIXED) ----------
+# ---------- IMAGE AR ----------
 @app.route("/image-ar/<filename>")
 def image_ar(filename):
-    return render_template("image_ar.html", filename=filename)
+    return render_template("image_ar.html", file=filename)
 
 
-# ---------- MODEL AR ROUTE ----------
+# ---------- MODEL AR ----------
 @app.route("/model-ar/<filename>")
 def model_ar(filename):
-    return render_template("model_ar.html", filename=filename)
+    return render_template("model_ar.html", file=filename)
 
 
-# ---------- CREATE PROJECT WITH PIN ----------
+# ---------- CREATE PROJECT ----------
 @app.route("/create")
 def create_project():
     if not session.get("create_auth"):
@@ -95,6 +97,7 @@ def verify_pin():
 # ---------- SAVE PROJECT ----------
 @app.route("/save", methods=["POST"])
 def save():
+
     if not session.get("create_auth"):
         return redirect("/create")
 
@@ -119,13 +122,15 @@ def save():
     return redirect("/")
 
 
-# ---------- DELETE ----------
+# ---------- DELETE PROJECT ----------
 @app.route("/delete/<int:id>")
 def delete_project(id):
+
     if not session.get("create_auth"):
         return redirect("/create")
 
     conn = sqlite3.connect(DB_PATH)
+
     project = conn.execute(
         "SELECT file FROM projects WHERE id=?",
         (id,)
@@ -146,7 +151,7 @@ def delete_project(id):
 # ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
-    session.pop("create_auth", None)
+    session.clear()
     return redirect("/")
 
 
@@ -156,9 +161,10 @@ def wall_ar():
     return render_template("wall_ar.html")
 
 
-# ---------- SERVE UPLOADS ----------
+# ---------- SERVE UPLOAD FILES ----------
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
+
     path = os.path.join(UPLOAD_FOLDER, filename)
 
     if not os.path.exists(path):
@@ -167,6 +173,7 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
-# ---------- LOCAL RUN ----------
+# ---------- RUN LOCAL ----------
 if __name__ == "__main__":
-    app.run(debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
