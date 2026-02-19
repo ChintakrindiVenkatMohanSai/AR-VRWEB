@@ -1,48 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PIN Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enter PIN</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
 <style>
 body{
-background:#111;
-color:white;
+background:linear-gradient(135deg,#020617,#0f172a);
+height:100vh;
 display:flex;
 justify-content:center;
 align-items:center;
-height:100vh;
-font-family:Arial;
 }
-.box{
-background:#222;
-padding:40px;
-border-radius:12px;
-text-align:center;
-}
-input{
-padding:12px;
-width:200px;
-margin:10px;
-border-radius:8px;
-border:none;
-}
-button{
-padding:12px 20px;
-background:#00bcd4;
-border:none;
-border-radius:8px;
+
+.card{
+background:rgba(30,41,59,0.85);
+backdrop-filter:blur(15px);
+border-radius:20px;
 color:white;
 }
 </style>
+
 </head>
 <body>
 
-<div class="box">
-<h2>Enter PIN</h2>
+<div class="card p-5 shadow-lg text-center" style="width:350px;">
+<h4 class="mb-4 text-info">🔐 Enter 4-Digit PIN</h4>
 
 <form action="/verify-pin" method="POST">
-<input type="password" name="pin" placeholder="4 digit PIN" required>
-<br>
-<button>Login</button>
+<input type="hidden" name="next_page" value="{{ next_page }}">
+
+<input type="password" name="pin"
+class="form-control text-center mb-3"
+maxlength="4"
+placeholder="****"
+required>
+
+<button class="btn btn-info w-100">Verify</button>
 </form>
 
 </div>

@@ -2,152 +2,225 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AR/VR Studio Platform</title>
+<title>ARVR Studio Pro</title>
 
-<link rel="stylesheet" href="/static/style.css">
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script type="module"
 src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
 <style>
-
-/* Page background */
 body{
 margin:0;
-font-family:Arial, Helvetica, sans-serif;
-background:#0b1a2e;
+background:#0b0f1a;
 color:white;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 
-/* Header */
-header{
-padding:20px;
-text-align:center;
-background:#081423;
-box-shadow:0 4px 20px rgba(0,0,0,.5);
+#bg{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:-1;
 }
 
-nav{
-margin-top:10px;
+.sidebar{
+min-height:100vh;
+background:rgba(20,20,35,.95);
+backdrop-filter:blur(20px);
 }
 
-/* Buttons */
-.btn{
-display:inline-block;
-background:#00bcd4;
-padding:10px 20px;
-border-radius:8px;
-color:white;
+.sidebar a{
+display:block;
+padding:12px;
+color:#cbd5e1;
 text-decoration:none;
-margin:6px;
-font-weight:bold;
+border-radius:10px;
 transition:.3s;
 }
 
-.btn:hover{
-background:#0097a7;
-transform:translateY(-2px);
+.sidebar a:hover{
+background:linear-gradient(90deg,#00f0ff,#7c3aed);
+color:white;
 }
 
-/* Projects grid */
-.projects{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-gap:25px;
-padding:40px;
-}
-
-/* Card */
-.card{
-background:#1f2f46;
-border-radius:18px;
-padding:30px 20px;
+.stat{
+background:rgba(255,255,255,.05);
+padding:25px;
+border-radius:20px;
 text-align:center;
-position:relative;
-overflow:visible; /* important for delete button */
-box-shadow:0 10px 30px rgba(0,0,0,.6);
+backdrop-filter:blur(10px);
 transition:.3s;
 }
 
-.card:hover{
+.stat:hover{
 transform:translateY(-5px);
+box-shadow:0 10px 40px rgba(0,240,255,.3);
 }
 
-/* Delete button */
-.deleteBtn{
-position:absolute;
-top:10px;
-right:10px;
-background:#ff3b3b;
-color:white;
-width:32px;
-height:32px;
-border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-font-weight:bold;
-text-decoration:none;
-z-index:999;
-box-shadow:0 5px 15px rgba(0,0,0,.6);
-transition:.25s;
+.card-ar{
+background:rgba(255,255,255,.05);
+padding:20px;
+border-radius:20px;
+backdrop-filter:blur(10px);
 }
 
-.deleteBtn:hover{
-background:red;
-transform:scale(1.1);
-}
-
-/* Model preview */
 model-viewer{
 width:100%;
-height:200px;
-margin:15px 0;
+height:220px;
+border-radius:15px;
 }
 
-h3{
-margin-bottom:20px;
+.footer{
+color:#94a3b8;
+font-size:14px;
+margin-top:50px;
 }
-
 </style>
-
 </head>
 
 <body>
 
-<header>
-<h1>🚀 AR/VR Studio Platform</h1>
+<canvas id="bg"></canvas>
 
-<nav>
-<a href="/create" class="btn">+ Create Project</a>
-<a href="/wall-ar" class="btn">🎨 Wall Colour AR</a>
+<nav class="navbar navbar-dark bg-dark d-md-none">
+<div class="container-fluid">
+<button class="navbar-toggler" data-bs-toggle="offcanvas" data-bs-target="#sidebar">
+<span class="navbar-toggler-icon"></span>
+</button>
+<span class="navbar-brand">🚀 ARVR Studio</span>
+</div>
 </nav>
-</header>
 
-<section class="projects">
+<div class="container-fluid">
+<div class="row">
 
+<div class="col-md-2 sidebar offcanvas-md offcanvas-start p-4" id="sidebar">
+<h4 class="text-info mb-4">ARVR Studio</h4>
+<a href="/">Dashboard</a>
+<a href="/create">Create Project</a>
+<a href="/wall-ar">Wall AR</a>
+<a href="/logout">Logout</a>
+</div>
+
+<div class="col-md-10 p-4">
+
+<h1 class="mb-4 text-info">AI Powered AR/VR Dashboard</h1>
+
+<div class="row g-4 mb-5">
+<div class="col-6 col-lg-3">
+<div class="stat">
+<h2 id="counter1">0</h2>
+<p>Projects</p>
+</div>
+</div>
+
+<div class="col-6 col-lg-3">
+<div class="stat">
+<h2 id="counter2">0</h2>
+<p>3D Models</p>
+</div>
+</div>
+</div>
+
+<div class="row g-4">
 {% for p in projects %}
-<div class="card">
+<div class="col-md-6 col-lg-4">
+<div class="card-ar">
 
-<!-- DELETE PROJECT BUTTON -->
-<a href="/delete/{{p[0]}}"
-onclick="return confirm('Delete this project?')"
-class="deleteBtn">✖</a>
+<h5>{{ p[1] }}</h5>
 
-<h3>{{p[1]}}</h3>
+{% if p[3] == 'model' %}
+<model-viewer
+src="/uploads/{{ p[2] }}"
+camera-controls
+auto-rotate
+shadow-intensity="1"
+ar>
+</model-viewer>
 
-{% if p[3]=='model' %}
-<model-viewer src="/uploads/{{p[2]}}" camera-controls auto-rotate></model-viewer>
-<a href="/model-ar/{{p[2]}}" class="btn">View AR</a>
+<a href="/model-ar/{{ p[2] }}" class="btn btn-info w-100">View AR</a>
 
 {% else %}
-<a href="/image-ar/{{p[2]}}" class="btn">Image AR</a>
+<a href="/image-ar/{{ p[2] }}" class="btn btn-info w-100">Image AR</a>
 {% endif %}
 
 </div>
+</div>
 {% endfor %}
+</div>
 
-</section>
+<div class="footer text-center mt-5">
+© 2026 ARVR Studio • AI Immersive Platform
+</div>
+
+</div>
+</div>
+</div>
+
+<script>
+const canvas = document.getElementById("bg");
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(
+75, window.innerWidth/window.innerHeight, 0.1, 1000
+);
+
+const renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const geo = new THREE.BufferGeometry();
+const verts = [];
+
+for(let i=0;i<1200;i++){
+verts.push(
+THREE.MathUtils.randFloatSpread(100),
+THREE.MathUtils.randFloatSpread(100),
+THREE.MathUtils.randFloatSpread(100)
+);
+}
+
+geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+
+const mat = new THREE.PointsMaterial({color:0x00f0ff,size:0.4});
+const particles = new THREE.Points(geo,mat);
+
+scene.add(particles);
+camera.position.z = 50;
+
+function animate(){
+requestAnimationFrame(animate);
+particles.rotation.y += 0.0007;
+renderer.render(scene,camera);
+}
+animate();
+
+window.addEventListener('resize',()=>{
+renderer.setSize(window.innerWidth,window.innerHeight);
+camera.aspect = window.innerWidth/window.innerHeight;
+camera.updateProjectionMatrix();
+});
+
+const projectCount = {{ projects|length|default(0) }};
+
+function counter(id,target){
+let c=0;
+let i=setInterval(()=>{
+c+=Math.ceil(target/40);
+if(c>=target){c=target;clearInterval(i);}
+document.getElementById(id).innerText=c;
+},40);
+}
+
+counter("counter1", projectCount);
+counter("counter2", projectCount);
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
