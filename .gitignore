@@ -1,4 +1,35 @@
+# Python virtual environment
+venv/
+env/
+ENV/
 
+# Python cache
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 
+# Database files
+projects.db
+*.sqlite3
+
+# Uploaded files (keep folder only)
 uploads/*
+!uploads/.gitkeep
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code settings
+.vscode/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
