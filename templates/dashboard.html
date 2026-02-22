@@ -1,72 +1,149 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>True AR Viewer - Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background: #0d1117; color: white; font-family: system-ui, sans-serif; }
-        .card { background: #161b22; border: 1px solid #30363d; }
-        .btn-outline-danger { --bs-btn-color: #f85149; --bs-btn-border-color: #f85149; }
-    </style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>True AR Viewer</title>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/webxr/ARButton.js"></script>
+
+<style>
+body{
+margin:0;
+overflow:hidden;
+font-family:sans-serif;
+background:black;
+}
+
+#info{
+position:absolute;
+top:20px;
+width:100%;
+text-align:center;
+color:white;
+z-index:10;
+font-weight:bold;
+}
+</style>
 </head>
-<body class="p-4">
 
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="text-info">True AR Viewer</h1>
-            <div>
-                {% if session.create_auth %}
-                    <a href="/create" class="btn btn-info me-2">+ New Project</a>
-                    <a href="/logout" class="btn btn-outline-secondary">Logout</a>
-                {% else %}
-                    <a href="/create" class="btn btn-outline-info">Login to Create</a>
-                {% endif %}
-            </div>
-        </div>
+<body>
 
-        {% if projects %}
-            <div class="row g-4">
-                {% for project in projects %}
-                <div class="col-md-4 col-sm-6">
-                    <div class="card h-100 shadow">
-                        {% if project.type == 'image' %}
-                            <img src="{{ project.file_url }}" class="card-img-top" alt="{{ project.name }}" style="height:180px; object-fit:cover;">
-                        {% else %}
-                            <div class="bg-dark text-center py-5" style="height:180px;">
-                                <h5 class="text-muted">3D Model</h5>
-                            </div>
-                        {% endif %}
-                        <div class="card-body">
-                            <h5 class="card-title">{{ project.name }}</h5>
-                            <p class="text-muted small">{{ project.type | capitalize }} • ID: {{ project.id }}</p>
-                            <div class="d-flex gap-2">
-                                {% if project.type == 'image' %}
-                                    <a href="{{ url_for('image_ar', project_id=project.id) }}" class="btn btn-sm btn-primary">View Image AR</a>
-                                {% else %}
-                                    <a href="{{ url_for('model_ar', project_id=project.id) }}" class="btn btn-sm btn-success">View 3D AR</a>
-                                {% endif %}
-                                {% if session.create_auth %}
-                                    <a href="{{ url_for('delete_project', id=project.id) }}" 
-                                       class="btn btn-sm btn-outline-danger"
-                                       onclick="return confirm('Delete {{ project.name }}?')">Delete</a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-5">
-                <h4 class="text-muted">No projects yet</h4>
-                {% if session.create_auth %}
-                    <a href="/create" class="btn btn-lg btn-info mt-3">Create your first AR project</a>
-                {% endif %}
-            </div>
-        {% endif %}
-    </div>
+<div id="info">
+Tap "START AR" → Scan floor/wall → Tap screen to place image
+</div>
+
+<script>
+
+let camera, scene, renderer;
+let controller;
+let reticle;
+let hitTestSource = null;
+let hitTestSourceRequested = false;
+
+init();
+
+function init(){
+
+scene = new THREE.Scene();
+
+camera = new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.01,20);
+
+renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.xr.enabled = true;
+
+document.body.appendChild(renderer.domElement);
+document.body.appendChild(ARButton.createButton(renderer,{requiredFeatures:['hit-test']}));
+
+/* LIGHT */
+scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1));
+
+/* RETICLE (placement indicator) */
+const ringGeo = new THREE.RingGeometry(0.08,0.1,32);
+ringGeo.rotateX(-Math.PI/2);
+
+reticle = new THREE.Mesh(
+ringGeo,
+new THREE.MeshBasicMaterial({color:0x00ffff})
+);
+reticle.matrixAutoUpdate=false;
+reticle.visible=false;
+scene.add(reticle);
+
+
+/* IMAGE TEXTURE */
+const texture = new THREE.TextureLoader().load(
+"/uploads/{{ filename }}"
+);
+
+const plane = new THREE.Mesh(
+new THREE.PlaneGeometry(0.6,0.6),
+new THREE.MeshBasicMaterial({map:texture,transparent:true})
+);
+
+controller = renderer.xr.getController(0);
+controller.addEventListener("select",()=>{
+if(reticle.visible){
+const clone = plane.clone();
+clone.position.setFromMatrixPosition(reticle.matrix);
+clone.quaternion.setFromRotationMatrix(reticle.matrix);
+scene.add(clone);
+}
+});
+
+scene.add(controller);
+
+renderer.setAnimationLoop(render);
+}
+
+
+function render(timestamp,frame){
+
+if(frame){
+
+const refSpace = renderer.xr.getReferenceSpace();
+const session = renderer.xr.getSession();
+
+if(!hitTestSourceRequested){
+
+session.requestReferenceSpace("viewer").then(space=>{
+session.requestHitTestSource({space}).then(src=>{
+hitTestSource = src;
+});
+});
+
+session.addEventListener("end",()=>{
+hitTestSourceRequested=false;
+hitTestSource=null;
+});
+
+hitTestSourceRequested=true;
+}
+
+if(hitTestSource){
+
+const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+if(hitTestResults.length){
+
+const hit = hitTestResults[0];
+const pose = hit.getPose(refSpace);
+
+reticle.visible=true;
+reticle.matrix.fromArray(pose.transform.matrix);
+
+}else{
+
+reticle.visible=false;
+}
+}
+}
+
+renderer.render(scene,camera);
+}
+
+</script>
 
 </body>
 </html>
