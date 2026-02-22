@@ -2,22 +2,21 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AR Viewer Pro</title>
+<title>AR Image Viewer</title>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
 <style>
 
-/* GLOBAL */
 body{
 margin:0;
 overflow:hidden;
 background:black;
 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-perspective:1600px;
+perspective:2000px;
 }
 
-/* CAMERA */
+/* Camera */
 video{
 position:fixed;
 top:0;
@@ -25,71 +24,51 @@ left:0;
 width:100vw;
 height:100vh;
 object-fit:cover;
-filter:brightness(.95) contrast(1.05) saturate(1.05);
+z-index:0;
+filter:brightness(.95);
 }
 
-/* AR IMAGE */
+/* AR image */
 .arImage{
 position:fixed;
 top:50%;
 left:50%;
 width:320px;
-border-radius:24px;
+border-radius:25px;
 cursor:grab;
 touch-action:none;
 transform-style:preserve-3d;
-transition:transform .08s linear;
+z-index:2;
 
-/* Realistic shadow */
 box-shadow:
-0 70px 200px rgba(0,0,0,.95),
-0 25px 80px rgba(0,0,0,.85),
-inset 0 0 20px rgba(255,255,255,.05);
+0 100px 200px rgba(0,0,0,.9),
+0 20px 60px rgba(0,0,0,.6);
 }
 
-/* IMAGE */
 .arImage img{
 width:100%;
-border-radius:24px;
-filter:contrast(1.08) brightness(.96);
+border-radius:25px;
 }
 
-/* Glass reflection */
-.arImage::after{
-content:"";
-position:absolute;
-top:0;
-left:0;
-width:100%;
-height:100%;
-border-radius:24px;
-background:linear-gradient(
-120deg,
-rgba(255,255,255,.12),
-transparent 40%
-);
-pointer-events:none;
-}
-
-/* CAPTURE BUTTON */
+/* Capture button only */
 .captureBtn{
 position:fixed;
-bottom:30px;
+bottom:40px;
 left:50%;
 transform:translateX(-50%);
-background:rgba(20,20,30,.6);
-backdrop-filter:blur(20px);
-padding:16px 42px;
-border-radius:50px;
+background:linear-gradient(135deg,#00e5ff,#7c3aed);
+padding:16px 55px;
+border-radius:60px;
 color:white;
-border:1px solid rgba(255,255,255,.25);
+border:none;
 font-weight:600;
-transition:.3s;
+z-index:5;
+cursor:pointer;
+box-shadow:0 10px 40px rgba(0,255,255,.4);
 }
 
 .captureBtn:hover{
-background:#00bcd4;
-box-shadow:0 10px 50px rgba(0,188,212,.7);
+transform:translateX(-50%) scale(1.05);
 }
 
 </style>
@@ -97,34 +76,44 @@ box-shadow:0 10px 50px rgba(0,188,212,.7);
 
 <body>
 
+<!-- Camera -->
 <video id="cam" autoplay playsinline muted></video>
 
+<!-- AR Image -->
 <div class="arImage" id="plate">
-<img src="{{ url_for('uploaded_file', filename=filename) }}">
+<img src="{{ project.file_url }}">
 </div>
 
+<!-- ONLY BUTTON -->
 <button class="captureBtn" onclick="captureAR()">
-📸 Capture AR Photo
+📸 Capture
 </button>
 
 <script>
 
-/* CAMERA START */
+/* CAMERA */
 navigator.mediaDevices.getUserMedia({
-video:{facingMode:"environment"}
+video:{ facingMode:"environment" }
 }).then(stream=>{
 cam.srcObject=stream;
 }).catch(()=>{
-alert("Camera permission required (HTTPS needed)");
+alert("Camera requires HTTPS. Use deployed site on mobile.");
 });
 
-
+/* TRANSFORM VARIABLES */
 let plate=document.getElementById("plate");
-let x=0,y=0,scale=1,rot=0;
+let x=0,y=0,scale=1,rotation=0;
 let startX,startY,startDist,startAngle;
 
+function update(){
+plate.style.transform=`
+translate(calc(-50% + ${x}px), calc(-50% + ${y}px))
+scale(${scale})
+rotate(${rotation}deg)
+`;
+}
 
-/* MOUSE DRAG */
+/* Mouse drag */
 plate.onmousedown=e=>{
 startX=e.clientX-x;
 startY=e.clientY-y;
@@ -138,8 +127,7 @@ update();
 document.onmouseup=()=>document.onmousemove=null;
 };
 
-
-/* ZOOM */
+/* Zoom */
 plate.onwheel=e=>{
 e.preventDefault();
 scale+=e.deltaY*-0.001;
@@ -147,8 +135,7 @@ scale=Math.max(.3,Math.min(scale,3));
 update();
 };
 
-
-/* TOUCH */
+/* Touch gestures */
 plate.addEventListener("touchstart",e=>{
 if(e.touches.length==1){
 startX=e.touches[0].clientX-x;
@@ -174,47 +161,14 @@ scale*=d/startDist;
 startDist=d;
 
 let a=getAngle(e);
-rot+=a-startAngle;
+rotation+=a-startAngle;
 startAngle=a;
 }
 
 update();
 });
 
-
-/* CAMERA MOTION PARALLAX */
-window.addEventListener("deviceorientation",e=>{
-let tiltX=(e.beta||0)/8;
-let tiltY=(e.gamma||0)/8;
-
-plate.style.transform+=
-` rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-});
-
-
-function update(){
-
-let tiltX=y*0.05;
-let tiltY=-x*0.05;
-
-plate.style.transform=`
-translate(calc(-50% + ${x}px), calc(-50% + ${y}px))
-scale(${scale})
-rotate(${rot}deg)
-rotateX(${tiltX}deg)
-rotateY(${tiltY}deg)
-`;
-
-/* dynamic shadow */
-plate.style.boxShadow=`
-0 ${80+Math.abs(y)}px ${220+Math.abs(x)}px rgba(0,0,0,.95),
-0 30px 90px rgba(0,0,0,.85),
-inset 0 0 20px rgba(255,255,255,.05)
-`;
-}
-
-
-/* HELPERS */
+/* Helpers */
 function getDist(e){
 let dx=e.touches[0].clientX-e.touches[1].clientX;
 let dy=e.touches[0].clientY-e.touches[1].clientY;
@@ -227,8 +181,7 @@ let dy=e.touches[1].clientY-e.touches[0].clientY;
 return Math.atan2(dy,dx)*180/Math.PI;
 }
 
-
-/* CAPTURE */
+/* Capture */
 function captureAR(){
 html2canvas(document.body).then(canvas=>{
 let link=document.createElement("a");
