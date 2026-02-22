@@ -10,8 +10,10 @@
 src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
 <style>
-body{
+html,body{
 margin:0;
+height:100%;
+overflow:hidden;
 background:#0b0f1a;
 color:white;
 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -29,7 +31,8 @@ z-index:-1;
 
 /* Sidebar */
 .sidebar{
-min-height:100vh;
+height:100vh;
+overflow-y:auto;
 background:rgba(20,20,35,.95);
 backdrop-filter:blur(20px);
 }
@@ -48,7 +51,13 @@ background:linear-gradient(90deg,#00f0ff,#7c3aed);
 color:white;
 }
 
-/* Card */
+/* Main content scroll */
+.main-content{
+height:100vh;
+overflow-y:auto;
+}
+
+/* Cards */
 .card-ar{
 background:rgba(255,255,255,.05);
 padding:20px;
@@ -63,6 +72,7 @@ transform:translateY(-6px);
 box-shadow:0 15px 50px rgba(0,240,255,.2);
 }
 
+/* Model Viewer */
 model-viewer{
 width:100%;
 height:220px;
@@ -108,10 +118,10 @@ margin-top:50px;
 <canvas id="bg"></canvas>
 
 <div class="container-fluid">
-<div class="row">
+<div class="row flex-nowrap">
 
 <!-- Sidebar -->
-<div class="col-md-2 sidebar p-4">
+<div class="col-3 col-md-2 sidebar p-3">
 <h4 class="text-info mb-4">ARVR Studio</h4>
 <a href="/">Dashboard</a>
 <a href="/create">Create Project</a>
@@ -120,7 +130,7 @@ margin-top:50px;
 </div>
 
 <!-- Main Content -->
-<div class="col-md-10 p-4">
+<div class="col-9 col-md-10 p-4 main-content">
 
 <h1 class="mb-4 text-info">AI Powered AR/VR Dashboard</h1>
 
@@ -133,9 +143,7 @@ margin-top:50px;
 <!-- DELETE BUTTON -->
 <a href="{{ url_for('delete_project', id=p.id) }}"
 onclick="return confirm('Delete this project?')"
-class="delete-btn">
-✕
-</a>
+class="delete-btn">✕</a>
 
 <h5>{{ p.name }}</h5>
 
@@ -181,18 +189,19 @@ View Image AR
 </div>
 
 <script>
-const canvas = document.getElementById("bg");
+// Background particles animation
+const canvas=document.getElementById("bg");
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-75, window.innerWidth/window.innerHeight, 0.1, 1000
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(
+75,window.innerWidth/window.innerHeight,0.1,1000
 );
 
-const renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
+const renderer=new THREE.WebGLRenderer({canvas:canvas,alpha:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
 
-const geo = new THREE.BufferGeometry();
-const verts = [];
+const geo=new THREE.BufferGeometry();
+const verts=[];
 
 for(let i=0;i<1200;i++){
 verts.push(
@@ -202,24 +211,24 @@ THREE.MathUtils.randFloatSpread(100)
 );
 }
 
-geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
 
-const mat = new THREE.PointsMaterial({color:0x00f0ff,size:0.4});
-const particles = new THREE.Points(geo,mat);
+const mat=new THREE.PointsMaterial({color:0x00f0ff,size:0.4});
+const particles=new THREE.Points(geo,mat);
 
 scene.add(particles);
-camera.position.z = 50;
+camera.position.z=50;
 
 function animate(){
 requestAnimationFrame(animate);
-particles.rotation.y += 0.0007;
+particles.rotation.y+=0.0007;
 renderer.render(scene,camera);
 }
 animate();
 
 window.addEventListener('resize',()=>{
 renderer.setSize(window.innerWidth,window.innerHeight);
-camera.aspect = window.innerWidth/window.innerHeight;
+camera.aspect=window.innerWidth/window.innerHeight;
 camera.updateProjectionMatrix();
 });
 </script>
