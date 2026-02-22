@@ -2,148 +2,225 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>True AR Viewer</title>
+<title>ARVR Studio Pro</title>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/webxr/ARButton.js"></script>
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script type="module"
+src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
 <style>
 body{
 margin:0;
-overflow:hidden;
-font-family:sans-serif;
-background:black;
+background:#0b0f1a;
+color:white;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 
-#info{
-position:absolute;
-top:20px;
+#bg{
+position:fixed;
+top:0;
+left:0;
 width:100%;
-text-align:center;
+height:100%;
+z-index:-1;
+}
+
+.sidebar{
+min-height:100vh;
+background:rgba(20,20,35,.95);
+backdrop-filter:blur(20px);
+}
+
+.sidebar a{
+display:block;
+padding:12px;
+color:#cbd5e1;
+text-decoration:none;
+border-radius:10px;
+transition:.3s;
+}
+
+.sidebar a:hover{
+background:linear-gradient(90deg,#00f0ff,#7c3aed);
 color:white;
-z-index:10;
-font-weight:bold;
+}
+
+.stat{
+background:rgba(255,255,255,.05);
+padding:25px;
+border-radius:20px;
+text-align:center;
+backdrop-filter:blur(10px);
+transition:.3s;
+}
+
+.stat:hover{
+transform:translateY(-5px);
+box-shadow:0 10px 40px rgba(0,240,255,.3);
+}
+
+.card-ar{
+background:rgba(255,255,255,.05);
+padding:20px;
+border-radius:20px;
+backdrop-filter:blur(10px);
+}
+
+model-viewer{
+width:100%;
+height:220px;
+border-radius:15px;
+}
+
+.footer{
+color:#94a3b8;
+font-size:14px;
+margin-top:50px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="info">
-Tap "START AR" → Scan floor/wall → Tap screen to place image
+<canvas id="bg"></canvas>
+
+<nav class="navbar navbar-dark bg-dark d-md-none">
+<div class="container-fluid">
+<button class="navbar-toggler" data-bs-toggle="offcanvas" data-bs-target="#sidebar">
+<span class="navbar-toggler-icon"></span>
+</button>
+<span class="navbar-brand">🚀 ARVR Studio</span>
+</div>
+</nav>
+
+<div class="container-fluid">
+<div class="row">
+
+<div class="col-md-2 sidebar offcanvas-md offcanvas-start p-4" id="sidebar">
+<h4 class="text-info mb-4">ARVR Studio</h4>
+<a href="/">Dashboard</a>
+<a href="/create">Create Project</a>
+<a href="/wall-ar">Wall AR</a>
+<a href="/logout">Logout</a>
+</div>
+
+<div class="col-md-10 p-4">
+
+<h1 class="mb-4 text-info">AI Powered AR/VR Dashboard</h1>
+
+<div class="row g-4 mb-5">
+<div class="col-6 col-lg-3">
+<div class="stat">
+<h2 id="counter1">0</h2>
+<p>Projects</p>
+</div>
+</div>
+
+<div class="col-6 col-lg-3">
+<div class="stat">
+<h2 id="counter2">0</h2>
+<p>3D Models</p>
+</div>
+</div>
+</div>
+
+<div class="row g-4">
+{% for p in projects %}
+<div class="col-md-6 col-lg-4">
+<div class="card-ar">
+
+<h5>{{ p[1] }}</h5>
+
+{% if p[3] == 'model' %}
+<model-viewer
+src="/uploads/{{ p[2] }}"
+camera-controls
+auto-rotate
+shadow-intensity="1"
+ar>
+</model-viewer>
+
+<a href="/model-ar/{{ p[2] }}" class="btn btn-info w-100">View AR</a>
+
+{% else %}
+<a href="/image-ar/{{ p[2] }}" class="btn btn-info w-100">Image AR</a>
+{% endif %}
+
+</div>
+</div>
+{% endfor %}
+</div>
+
+<div class="footer text-center mt-5">
+© 2026 ARVR Studio • AI Immersive Platform
+</div>
+
+</div>
+</div>
 </div>
 
 <script>
+const canvas = document.getElementById("bg");
 
-let camera, scene, renderer;
-let controller;
-let reticle;
-let hitTestSource = null;
-let hitTestSourceRequested = false;
-
-init();
-
-function init(){
-
-scene = new THREE.Scene();
-
-camera = new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.01,20);
-
-renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
-renderer.setSize(window.innerWidth,window.innerHeight);
-renderer.xr.enabled = true;
-
-document.body.appendChild(renderer.domElement);
-document.body.appendChild(ARButton.createButton(renderer,{requiredFeatures:['hit-test']}));
-
-/* LIGHT */
-scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1));
-
-/* RETICLE (placement indicator) */
-const ringGeo = new THREE.RingGeometry(0.08,0.1,32);
-ringGeo.rotateX(-Math.PI/2);
-
-reticle = new THREE.Mesh(
-ringGeo,
-new THREE.MeshBasicMaterial({color:0x00ffff})
-);
-reticle.matrixAutoUpdate=false;
-reticle.visible=false;
-scene.add(reticle);
-
-
-/* IMAGE TEXTURE */
-const texture = new THREE.TextureLoader().load(
-"/uploads/{{ filename }}"
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(
+75, window.innerWidth/window.innerHeight, 0.1, 1000
 );
 
-const plane = new THREE.Mesh(
-new THREE.PlaneGeometry(0.6,0.6),
-new THREE.MeshBasicMaterial({map:texture,transparent:true})
+const renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const geo = new THREE.BufferGeometry();
+const verts = [];
+
+for(let i=0;i<1200;i++){
+verts.push(
+THREE.MathUtils.randFloatSpread(100),
+THREE.MathUtils.randFloatSpread(100),
+THREE.MathUtils.randFloatSpread(100)
 );
-
-controller = renderer.xr.getController(0);
-controller.addEventListener("select",()=>{
-if(reticle.visible){
-const clone = plane.clone();
-clone.position.setFromMatrixPosition(reticle.matrix);
-clone.quaternion.setFromRotationMatrix(reticle.matrix);
-scene.add(clone);
-}
-});
-
-scene.add(controller);
-
-renderer.setAnimationLoop(render);
 }
 
+geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
 
-function render(timestamp,frame){
+const mat = new THREE.PointsMaterial({color:0x00f0ff,size:0.4});
+const particles = new THREE.Points(geo,mat);
 
-if(frame){
+scene.add(particles);
+camera.position.z = 50;
 
-const refSpace = renderer.xr.getReferenceSpace();
-const session = renderer.xr.getSession();
-
-if(!hitTestSourceRequested){
-
-session.requestReferenceSpace("viewer").then(space=>{
-session.requestHitTestSource({space}).then(src=>{
-hitTestSource = src;
-});
-});
-
-session.addEventListener("end",()=>{
-hitTestSourceRequested=false;
-hitTestSource=null;
-});
-
-hitTestSourceRequested=true;
-}
-
-if(hitTestSource){
-
-const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-if(hitTestResults.length){
-
-const hit = hitTestResults[0];
-const pose = hit.getPose(refSpace);
-
-reticle.visible=true;
-reticle.matrix.fromArray(pose.transform.matrix);
-
-}else{
-
-reticle.visible=false;
-}
-}
-}
-
+function animate(){
+requestAnimationFrame(animate);
+particles.rotation.y += 0.0007;
 renderer.render(scene,camera);
 }
+animate();
 
+window.addEventListener('resize',()=>{
+renderer.setSize(window.innerWidth,window.innerHeight);
+camera.aspect = window.innerWidth/window.innerHeight;
+camera.updateProjectionMatrix();
+});
+
+const projectCount = {{ projects|length if projects else 0 }};
+
+function counter(id,target){
+let c=0;
+let i=setInterval(()=>{
+c+=Math.ceil(target/40);
+if(c>=target){c=target;clearInterval(i);}
+document.getElementById(id).innerText=c;
+},40);
+}
+
+counter("counter1", projectCount);
+counter("counter2", projectCount);
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
