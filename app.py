@@ -43,11 +43,8 @@ def init_db():
     conn.close()
 
 
-@app.before_request
-def initialize_db_once():
-    if not hasattr(app, "db_initialized"):
-        init_db()
-        app.db_initialized = True
+# ✅ Initialize DB once when app starts (better for Render)
+init_db()
 
 
 # ---------- DASHBOARD ----------
@@ -99,7 +96,6 @@ def verify_pin():
 # ---------- SAVE PROJECT ----------
 @app.route("/save", methods=["POST"])
 def save():
-
     if not session.get("create_auth"):
         return redirect("/create")
 
@@ -111,7 +107,8 @@ def save():
         return "No file uploaded"
 
     filename = secure_filename(file.filename)
-    file.save(os.path.join(UPLOAD_FOLDER, filename))
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
 
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
@@ -132,7 +129,6 @@ def delete_project(id):
         return redirect("/create")
 
     conn = sqlite3.connect(DB_PATH)
-
     project = conn.execute(
         "SELECT file FROM projects WHERE id=?",
         (id,)
@@ -175,7 +171,7 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
-# ---------- LOCAL RUN ----------
+# ---------- LOCAL RUN ONLY ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
