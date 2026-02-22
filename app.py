@@ -5,15 +5,13 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
 
-# ---------- PATH SETUP ----------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+# ---------- PATH SETUP (RENDER SAFE) ----------
+UPLOAD_FOLDER = "/tmp/uploads"
 DB_PATH = "/tmp/projects.db"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-# ---------- DATABASE INIT ----------
 # ---------- DATABASE INIT ----------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -51,6 +49,7 @@ def initialize_db_once():
         init_db()
         app.db_initialized = True
 
+
 # ---------- DASHBOARD ----------
 @app.route("/")
 def dashboard():
@@ -64,6 +63,7 @@ def dashboard():
 @app.route("/image-ar/<filename>")
 def image_ar(filename):
     return render_template("image_ar.html", filename=filename)
+
 
 # ---------- MODEL AR ----------
 @app.route("/model-ar/<filename>")
@@ -175,7 +175,7 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
-# ---------- RUN LOCAL ----------
+# ---------- LOCAL RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
