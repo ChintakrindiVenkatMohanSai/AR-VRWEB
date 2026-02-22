@@ -5,11 +5,10 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
 
-
 # ---------- PATH SETUP ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-DB_PATH = os.path.join(BASE_DIR, "projects.db")
+DB_PATH = "/tmp/projects.db"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
