@@ -3,22 +3,26 @@ from flask import Flask, render_template, request, redirect, session, abort
 from flask_sqlalchemy import SQLAlchemy
 import cloudinary
 import cloudinary.uploader
-from cloudinary.utils import cloudinary_url
 from dotenv import load_dotenv
 
-load_dotenv()  # only for local development
+load_dotenv()  # local dev only
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY") or "change-this-in-production-please"
+app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
 
-# PostgreSQL (Render provides this as env var)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+# -------- DATABASE FIX FOR RENDER --------
+db_url = os.environ.get("DATABASE_URL")
+
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 
 db = SQLAlchemy(app)
 
-# Cloudinary setup
+# -------- CLOUDINARY --------
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
     api_key=os.environ.get("CLOUDINARY_API_KEY"),
@@ -26,18 +30,18 @@ cloudinary.config(
     secure=True
 )
 
-# ── Model ──
+# -------- MODEL --------
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     file_url = db.Column(db.String(500), nullable=False)
     file_public_id = db.Column(db.String(200))
-    type = db.Column(db.String(50), nullable=False)  # "image" or "model"
+    type = db.Column(db.String(50), nullable=False)
 
 with app.app_context():
     db.create_all()
 
-# ── Routes ──
+# -------- ROUTES --------
 
 @app.route("/")
 def dashboard():
@@ -73,12 +77,11 @@ def verify_pin():
     pin = request.form.get("pin")
     next_page = request.form.get("next_page", "/")
 
-    correct_pin = os.environ.get("ADMIN_PIN", "1234")
-    if pin == correct_pin:
+    if pin == os.environ.get("ADMIN_PIN", "1234"):
         session["create_auth"] = True
         return redirect(next_page)
-    
-    return render_template("pin_login.html", next_page=next_page, error="Wrong PIN")
+
+    return render_template("pin_login.html", error="Wrong PIN")
 
 
 @app.route("/save", methods=["POST"])
@@ -90,7 +93,7 @@ def save():
     ptype = request.form.get("type")
     file = request.files.get("file")
 
-    if not file or not file.filename:
+    if not file:
         return "No file selected", 400
 
     try:
@@ -99,25 +102,24 @@ def save():
         upload_result = cloudinary.uploader.upload(
             file,
             resource_type=resource_type,
-            folder="ar-projects",
-            use_filename=True,
-            unique_filename=False
+            folder="ar-projects"
         )
 
-        new_project = Project(
+        project = Project(
             name=name,
             file_url=upload_result["secure_url"],
             file_public_id=upload_result.get("public_id"),
             type=ptype
         )
-        db.session.add(new_project)
+
+        db.session.add(project)
         db.session.commit()
 
         return redirect("/")
 
     except Exception as e:
         db.session.rollback()
-        return f"Upload error: {str(e)}", 500
+        return f"Upload error: {e}", 500
 
 
 @app.route("/delete/<int:id>")
@@ -130,12 +132,13 @@ def delete_project(id):
     try:
         if project.file_public_id:
             cloudinary.uploader.destroy(project.file_public_id)
-        
+
         db.session.delete(project)
         db.session.commit()
+
     except:
         db.session.rollback()
-        return "Could not delete project", 500
+        return "Delete failed", 500
 
     return redirect("/")
 
@@ -153,4 +156,4 @@ def wall_ar():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port)
