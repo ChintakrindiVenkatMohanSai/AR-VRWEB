@@ -1,74 +1,66 @@
-from flask import Flask, render_template, request, redirect, send_from_directory, abort, session
-import sqlite3, os
-from werkzeug.utils import secure_filename
+import os
+from flask import Flask, render_template, request, redirect, session, abort
+from flask_sqlalchemy import SQLAlchemy
+import cloudinary
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
+from dotenv import load_dotenv
+
+load_dotenv()  # only for local development
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
+app.secret_key = os.environ.get("SECRET_KEY") or "change-this-in-production-please"
 
-# ---------- PATH SETUP (RENDER SAFE) ----------
-UPLOAD_FOLDER = "/tmp/uploads"
-DB_PATH = "/tmp/projects.db"
+# PostgreSQL (Render provides this as env var)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+db = SQLAlchemy(app)
 
+# Cloudinary setup
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    secure=True
+)
 
-# ---------- DATABASE INIT ----------
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+# ── Model ──
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    file_url = db.Column(db.String(500), nullable=False)
+    file_public_id = db.Column(db.String(200))
+    type = db.Column(db.String(50), nullable=False)  # "image" or "model"
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS projects(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        file TEXT,
-        type TEXT
-    )
-    """)
+with app.app_context():
+    db.create_all()
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS auth(
-        id INTEGER PRIMARY KEY,
-        pin TEXT,
-        email TEXT
-    )
-    """)
+# ── Routes ──
 
-    c.execute("""
-    INSERT OR IGNORE INTO auth(id,pin,email)
-    VALUES(1,'1234','admin@email.com')
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-# ✅ Initialize DB once when app starts (better for Render)
-init_db()
-
-
-# ---------- DASHBOARD ----------
 @app.route("/")
 def dashboard():
-    conn = sqlite3.connect(DB_PATH)
-    projects = conn.execute("SELECT * FROM projects").fetchall()
-    conn.close()
+    projects = Project.query.all()
     return render_template("dashboard.html", projects=projects)
 
 
-# ---------- IMAGE AR ----------
-@app.route("/image-ar/<filename>")
-def image_ar(filename):
-    return render_template("image_ar.html", filename=filename)
+@app.route("/image-ar/<int:project_id>")
+def image_ar(project_id):
+    project = Project.query.get_or_404(project_id)
+    if project.type != "image":
+        abort(404)
+    return render_template("image_ar.html", project=project)
 
 
-# ---------- MODEL AR ----------
-@app.route("/model-ar/<filename>")
-def model_ar(filename):
-    return render_template("model_ar.html", file=filename)
+@app.route("/model-ar/<int:project_id>")
+def model_ar(project_id):
+    project = Project.query.get_or_404(project_id)
+    if project.type != "model":
+        abort(404)
+    return render_template("model_ar.html", project=project)
 
 
-# ---------- CREATE PROJECT ----------
 @app.route("/create")
 def create_project():
     if not session.get("create_auth"):
@@ -76,24 +68,19 @@ def create_project():
     return render_template("create_project.html")
 
 
-# ---------- VERIFY PIN ----------
 @app.route("/verify-pin", methods=["POST"])
 def verify_pin():
     pin = request.form.get("pin")
-    next_page = request.form.get("next_page")
+    next_page = request.form.get("next_page", "/")
 
-    conn = sqlite3.connect(DB_PATH)
-    row = conn.execute("SELECT pin FROM auth WHERE id=1").fetchone()
-    conn.close()
-
-    if row and row[0] == pin:
+    correct_pin = os.environ.get("ADMIN_PIN", "1234")
+    if pin == correct_pin:
         session["create_auth"] = True
         return redirect(next_page)
+    
+    return render_template("pin_login.html", next_page=next_page, error="Wrong PIN")
 
-    return "Wrong PIN"
 
-
-# ---------- SAVE PROJECT ----------
 @app.route("/save", methods=["POST"])
 def save():
     if not session.get("create_auth"):
@@ -103,75 +90,67 @@ def save():
     ptype = request.form.get("type")
     file = request.files.get("file")
 
-    if not file or file.filename == "":
-        return "No file uploaded"
+    if not file or not file.filename:
+        return "No file selected", 400
 
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(filepath)
+    try:
+        resource_type = "image" if ptype == "image" else "raw"
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "INSERT INTO projects(name,file,type) VALUES(?,?,?)",
-        (name, filename, ptype)
-    )
-    conn.commit()
-    conn.close()
+        upload_result = cloudinary.uploader.upload(
+            file,
+            resource_type=resource_type,
+            folder="ar-projects",
+            use_filename=True,
+            unique_filename=False
+        )
 
-    return redirect("/")
+        new_project = Project(
+            name=name,
+            file_url=upload_result["secure_url"],
+            file_public_id=upload_result.get("public_id"),
+            type=ptype
+        )
+        db.session.add(new_project)
+        db.session.commit()
+
+        return redirect("/")
+
+    except Exception as e:
+        db.session.rollback()
+        return f"Upload error: {str(e)}", 500
 
 
-# ---------- DELETE PROJECT ----------
 @app.route("/delete/<int:id>")
 def delete_project(id):
-
     if not session.get("create_auth"):
         return redirect("/create")
 
-    conn = sqlite3.connect(DB_PATH)
-    project = conn.execute(
-        "SELECT file FROM projects WHERE id=?",
-        (id,)
-    ).fetchone()
+    project = Project.query.get_or_404(id)
 
-    if project:
-        filepath = os.path.join(UPLOAD_FOLDER, project[0])
-        if os.path.exists(filepath):
-            os.remove(filepath)
-
-    conn.execute("DELETE FROM projects WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
+    try:
+        if project.file_public_id:
+            cloudinary.uploader.destroy(project.file_public_id)
+        
+        db.session.delete(project)
+        db.session.commit()
+    except:
+        db.session.rollback()
+        return "Could not delete project", 500
 
     return redirect("/")
 
 
-# ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
 
-# ---------- WALL AR ----------
 @app.route("/wall-ar")
 def wall_ar():
     return render_template("wall_ar.html")
 
 
-# ---------- SERVE UPLOAD FILES ----------
-@app.route("/uploads/<path:filename>")
-def uploaded_file(filename):
-
-    path = os.path.join(UPLOAD_FOLDER, filename)
-
-    if not os.path.exists(path):
-        abort(404)
-
-    return send_from_directory(UPLOAD_FOLDER, filename)
-
-
-# ---------- LOCAL RUN ONLY ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)

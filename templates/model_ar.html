@@ -1,20 +1,34 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<script type="module"
-src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
-</script>
-
-<style>
-body{margin:0;background:black;}
-model-viewer{width:100vw;height:100vh;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model AR – {{ project.name }}</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <style>
+        body { margin:0; background:#000; }
+        model-viewer { width:100vw; height:100vh; }
+    </style>
 </head>
-
 <body>
 
-<model-viewer src="/uploads/{{file}}" ar camera-controls auto-rotate>
-<button slot="ar-button">🚀 View in AR</button>
+<model-viewer 
+    src="{{ project.file_url }}"
+    alt="{{ project.name }}"
+    ar 
+    ar-modes="webxr scene-viewer quick-look"
+    camera-controls 
+    auto-rotate 
+    shadow-intensity="1"
+    exposure="1"
+    style="background:#111;">
+    
+    <button slot="ar-button" 
+            style="position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
+                   padding:14px 32px; background:#00bcd4; border:none; border-radius:50px;
+                   color:white; font-weight:bold; font-size:1.1rem; z-index:10;">
+        View in your space →
+    </button>
 </model-viewer>
 
 </body>
