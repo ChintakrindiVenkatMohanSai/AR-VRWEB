@@ -5,20 +5,26 @@ import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
 
-load_dotenv()  # local dev only
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
 
-# -------- DATABASE FIX FOR RENDER --------
+# -------- DATABASE CONFIG --------
 db_url = os.environ.get("DATABASE_URL")
 
-if db_url and db_url.startswith("postgres://"):
+if not db_url:
+    raise RuntimeError("DATABASE_URL is not set")
+
+if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+    "connect_args": {"sslmode": "require"}
+}
 
 db = SQLAlchemy(app)
 
@@ -48,14 +54,12 @@ def dashboard():
     projects = Project.query.all()
     return render_template("dashboard.html", projects=projects)
 
-
 @app.route("/image-ar/<int:project_id>")
 def image_ar(project_id):
     project = Project.query.get_or_404(project_id)
     if project.type != "image":
         abort(404)
     return render_template("image_ar.html", project=project)
-
 
 @app.route("/model-ar/<int:project_id>")
 def model_ar(project_id):
@@ -64,13 +68,11 @@ def model_ar(project_id):
         abort(404)
     return render_template("model_ar.html", project=project)
 
-
 @app.route("/create")
 def create_project():
     if not session.get("create_auth"):
         return render_template("pin_login.html", next_page="/create")
     return render_template("create_project.html")
-
 
 @app.route("/verify-pin", methods=["POST"])
 def verify_pin():
@@ -82,7 +84,6 @@ def verify_pin():
         return redirect(next_page)
 
     return render_template("pin_login.html", error="Wrong PIN")
-
 
 @app.route("/save", methods=["POST"])
 def save():
@@ -121,7 +122,6 @@ def save():
         db.session.rollback()
         return f"Upload error: {e}", 500
 
-
 @app.route("/delete/<int:id>")
 def delete_project(id):
     if not session.get("create_auth"):
@@ -142,17 +142,14 @@ def delete_project(id):
 
     return redirect("/")
 
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
-
 @app.route("/wall-ar")
 def wall_ar():
     return render_template("wall_ar.html")
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
