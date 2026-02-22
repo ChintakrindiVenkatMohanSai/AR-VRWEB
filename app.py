@@ -13,14 +13,17 @@ app = Flask(__name__)
 # ---------- SECRET KEY ----------
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
 
-# ---------- DATABASE SETUP ----------
+# ---------- SESSION FIX FOR MOBILE HTTPS ----------
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
+
+# ---------- DATABASE ----------
 db_url = os.environ.get("DATABASE_URL")
 
-# Fallback local SQLite if not set (for local testing)
 if not db_url:
     db_url = "sqlite:///local.db"
 
-# Render/Railway postgres fix
+# Fix postgres:// issue (Railway/Render)
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -32,7 +35,7 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 db = SQLAlchemy(app)
 
-# ---------- CLOUDINARY CONFIG ----------
+# ---------- CLOUDINARY ----------
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
     api_key=os.environ.get("CLOUDINARY_API_KEY"),
@@ -40,7 +43,7 @@ cloudinary.config(
     secure=True
 )
 
-# ---------- DATABASE MODEL ----------
+# ---------- MODEL ----------
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
@@ -49,7 +52,6 @@ class Project(db.Model):
     type = db.Column(db.String(50), nullable=False)
 
 
-# Create DB tables automatically
 with app.app_context():
     db.create_all()
 
@@ -94,6 +96,7 @@ def verify_pin():
 
     if pin == correct_pin:
         session["create_auth"] = True
+        session.permanent = True
         return redirect(next_page)
 
     return render_template("pin_login.html", error="Wrong PIN")
@@ -169,7 +172,6 @@ def wall_ar():
     return render_template("wall_ar.html")
 
 
-# ---------- LOCAL RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
