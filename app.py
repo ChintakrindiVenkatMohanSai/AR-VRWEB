@@ -1,3 +1,4 @@
+
 import os
 import uuid
 from flask import Flask, render_template, request, redirect, session, abort, send_from_directory
@@ -14,19 +15,18 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
 
 # ---------- SESSION CONFIG ----------
-# NOTE: disable secure cookie locally
 app.config["SESSION_COOKIE_SECURE"] = False
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
-# ---------- DATABASE ----------
+# ---------- DATABASE CONFIG ----------
 
 db_url = os.environ.get("DATABASE_URL")
 
-if not db_url:
-    db_url = "sqlite:///local.db"
-
-if db_url.startswith("postgres://"):
+if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+if not db_url:
+    raise RuntimeError("DATABASE_URL not set")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -35,16 +35,13 @@ db = SQLAlchemy(app)
 
 # ---------- UPLOAD CONFIG ----------
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+UPLOAD_FOLDER = "/tmp/uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "glb"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -63,11 +60,12 @@ class Project(db.Model):
     type = db.Column(db.String(50), nullable=False)
 
 
+# ---------- CREATE TABLES ----------
 with app.app_context():
     db.create_all()
 
-# ---------- SERVE UPLOADED FILES ----------
 
+# ---------- SERVE UPLOADED FILES ----------
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
@@ -82,18 +80,19 @@ def uploaded_file(filename):
 
 # ---------- DASHBOARD ----------
 
-
 @app.route("/")
 def dashboard():
 
     projects = Project.query.order_by(Project.id.desc()).all()
 
-    # remove broken file records
     valid_projects = []
 
     for p in projects:
+
         if p.file_url.startswith("/uploads/"):
+
             filename = p.file_url.split("/")[-1]
+
             path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
 
             if not os.path.exists(path):
@@ -108,7 +107,6 @@ def dashboard():
 
 # ---------- IMAGE AR ----------
 
-
 @app.route("/image-ar/<int:project_id>")
 def image_ar(project_id):
 
@@ -122,7 +120,6 @@ def image_ar(project_id):
 
 # ---------- MODEL AR ----------
 
-
 @app.route("/model-ar/<int:project_id>")
 def model_ar(project_id):
 
@@ -135,7 +132,6 @@ def model_ar(project_id):
 
 
 # ---------- CREATE PAGE ----------
-
 
 @app.route("/create")
 def create_project():
@@ -151,7 +147,6 @@ def create_project():
 
 
 # ---------- VERIFY PIN ----------
-
 
 @app.route("/verify-pin", methods=["POST"])
 def verify_pin():
@@ -177,7 +172,6 @@ def verify_pin():
 
 
 # ---------- SAVE PROJECT ----------
-
 
 @app.route("/save", methods=["POST"])
 def save():
@@ -225,7 +219,6 @@ def save():
 
 # ---------- DELETE PROJECT ----------
 
-
 @app.route("/delete/<int:id>")
 def delete_project(id):
 
@@ -258,7 +251,6 @@ def delete_project(id):
 
 # ---------- LOGOUT ----------
 
-
 @app.route("/logout")
 def logout():
 
@@ -269,7 +261,6 @@ def logout():
 
 # ---------- WALL AR ----------
 
-
 @app.route("/wall-ar")
 def wall_ar():
 
@@ -277,7 +268,6 @@ def wall_ar():
 
 
 # ---------- RUN SERVER ----------
-
 
 if __name__ == "__main__":
 
@@ -288,3 +278,4 @@ if __name__ == "__main__":
         port=port,
         debug=True
     )
+
