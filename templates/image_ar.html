@@ -2,7 +2,7 @@
 <html>
 <head>
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>AR Viewer</title>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -18,6 +18,7 @@ overflow:hidden;
 background:black;
 font-family:Segoe UI;
 height:100%;
+touch-action:none;
 }
 
 /* ===== CAMERA ===== */
@@ -30,9 +31,10 @@ width:100vw;
 height:100vh;
 object-fit:cover;
 z-index:1;
+pointer-events:none;
 }
 
-/* ===== AR UI MESSAGE ===== */
+/* ===== UI MESSAGE ===== */
 
 .arUI{
 position:fixed;
@@ -62,7 +64,7 @@ z-index:10;
 box-shadow:
 0 40px 120px rgba(0,0,0,.6);
 
-transition:transform .25s cubic-bezier(.25,.8,.25,1);
+transition:transform .2s ease;
 }
 
 .arImage img{
@@ -88,10 +90,6 @@ z-index:2000;
 cursor:pointer;
 }
 
-.captureBtn:hover{
-background:#005be0;
-}
-
 </style>
 </head>
 
@@ -100,9 +98,9 @@ background:#005be0;
 <!-- CAMERA -->
 <video id="cam" autoplay playsinline muted></video>
 
-<!-- UI MESSAGE -->
+<!-- UI -->
 <div class="arUI">
-Drag and zoom the image to preview
+Drag and pinch to resize the image
 </div>
 
 <!-- AR IMAGE -->
@@ -132,7 +130,7 @@ alert("Camera requires HTTPS.");
 });
 
 
-/* ===== AR VARIABLES ===== */
+/* ===== VARIABLES ===== */
 
 let plate=document.getElementById("plate");
 
@@ -148,7 +146,7 @@ let startY=0;
 
 function update(){
 
-plate.style.transform=
+plate.style.transform =
 `translate(-50%,-50%)
  translate(${x}px,${y}px)
  scale(${scale})`;
@@ -156,7 +154,7 @@ plate.style.transform=
 }
 
 
-/* ===== DRAG (MOUSE) ===== */
+/* ===== MOUSE DRAG ===== */
 
 plate.addEventListener("mousedown",e=>{
 
@@ -185,18 +183,25 @@ document.addEventListener("mouseup",stop);
 });
 
 
-/* ===== TOUCH DRAG (MOBILE) ===== */
+/* ===== TOUCH DRAG ===== */
 
 plate.addEventListener("touchstart",e=>{
+
+if(e.touches.length===1){
 
 let touch=e.touches[0];
 
 startX=touch.clientX-x;
 startY=touch.clientY-y;
 
+}
+
 });
 
+
 plate.addEventListener("touchmove",e=>{
+
+if(e.touches.length===1){
 
 let touch=e.touches[0];
 
@@ -205,10 +210,58 @@ y=touch.clientY-startY;
 
 update();
 
+}
+
 });
 
 
-/* ===== ZOOM ===== */
+/* ===== PINCH ZOOM ===== */
+
+let initialDistance=null;
+let initialScale=1;
+
+plate.addEventListener("touchstart",function(e){
+
+if(e.touches.length===2){
+
+initialDistance=getDistance(e.touches[0],e.touches[1]);
+initialScale=scale;
+
+}
+
+});
+
+
+plate.addEventListener("touchmove",function(e){
+
+if(e.touches.length===2){
+
+e.preventDefault();
+
+let newDistance=getDistance(e.touches[0],e.touches[1]);
+
+scale=initialScale*(newDistance/initialDistance);
+
+scale=Math.max(0.3,Math.min(scale,4));
+
+update();
+
+}
+
+});
+
+
+function getDistance(t1,t2){
+
+let dx=t1.clientX-t2.clientX;
+let dy=t1.clientY-t2.clientY;
+
+return Math.sqrt(dx*dx+dy*dy);
+
+}
+
+
+/* ===== MOUSE WHEEL ZOOM ===== */
 
 plate.addEventListener("wheel",e=>{
 
@@ -228,6 +281,7 @@ update();
 document.getElementById("captureBtn").addEventListener("click",async()=>{
 
 const canvas=document.createElement("canvas");
+
 canvas.width=window.innerWidth;
 canvas.height=window.innerHeight;
 
