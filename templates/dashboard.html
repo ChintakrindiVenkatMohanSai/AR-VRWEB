@@ -1,173 +1,214 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ARVR Studio Pro</title>
+<title>ARVR Studio</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
 <script type="module"
 src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
 <style>
+
 body{
 margin:0;
-background:#0b0f1a;
+background:linear-gradient(180deg,#0b0f1a,#020617);
 color:white;
 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-overflow-x:hidden;
 }
 
-/* Background animation */
-#bg{
-position:fixed;
+/* HEADER */
+
+.header{
+position:sticky;
 top:0;
-left:0;
-width:100%;
-height:100%;
-z-index:-1;
-}
-
-/* Sidebar */
-.sidebar{
-background:rgba(20,20,35,.95);
+z-index:1000;
+background:rgba(15,23,42,.85);
 backdrop-filter:blur(20px);
-min-height:100vh;
+padding:14px 18px;
+font-weight:600;
+font-size:18px;
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
 
-.sidebar a{
-display:block;
-padding:12px;
-color:#cbd5e1;
-text-decoration:none;
-border-radius:10px;
-transition:.3s;
+/* SEARCH */
+
+.search-box{
+padding:10px 15px;
 }
 
-.sidebar a:hover{
-background:linear-gradient(90deg,#00f0ff,#7c3aed);
+.search-box input{
+width:100%;
+border-radius:12px;
+border:none;
+padding:10px;
+background:#0f172a;
 color:white;
 }
 
-/* Card */
+/* CARDS */
+
 .card-ar{
-background:rgba(255,255,255,.05);
-padding:20px;
-border-radius:20px;
-backdrop-filter:blur(10px);
+background:rgba(255,255,255,.04);
+border-radius:18px;
+padding:12px;
+transition:.25s;
 position:relative;
-transition:.3s;
 }
 
 .card-ar:hover{
-transform:translateY(-6px);
-box-shadow:0 15px 50px rgba(0,240,255,.2);
+transform:translateY(-4px);
+box-shadow:0 8px 25px rgba(0,240,255,.15);
 }
+
+.card-ar h6{
+font-size:14px;
+margin-bottom:8px;
+color:#e2e8f0;
+}
+
+/* IMAGE */
+
+.preview{
+width:100%;
+height:150px;
+object-fit:cover;
+border-radius:12px;
+margin-bottom:10px;
+}
+
+/* MODEL */
 
 model-viewer{
 width:100%;
-height:220px;
-border-radius:15px;
+height:150px;
+border-radius:12px;
+margin-bottom:10px;
 }
 
-/* Delete button */
+/* BUTTON */
+
+.btn-ar{
+background:#06b6d4;
+border:none;
+border-radius:10px;
+width:100%;
+padding:8px;
+font-size:14px;
+}
+
+/* DELETE */
+
 .delete-btn{
 position:absolute;
-top:10px;
-right:12px;
-background:rgba(255,0,60,.85);
+top:8px;
+right:8px;
+width:26px;
+height:26px;
+border-radius:50%;
+background:#ef4444;
+display:flex;
+align-items:center;
+justify-content:center;
 color:white;
-width:30px;
-height:30px;
+font-size:13px;
+text-decoration:none;
+}
+
+/* FLOAT CREATE */
+
+.create-btn{
+position:fixed;
+bottom:80px;
+right:20px;
+width:55px;
+height:55px;
+background:#06b6d4;
 border-radius:50%;
 display:flex;
 align-items:center;
 justify-content:center;
-text-decoration:none;
-font-weight:bold;
-transition:.3s;
-z-index:10;
-}
-
-.delete-btn:hover{
-background:red;
-transform:scale(1.15);
-}
-
-/* Mobile fix */
-@media(max-width:768px){
-.sidebar{
-position:fixed;
-z-index:999;
-width:220px;
-left:-220px;
-transition:.3s;
-}
-
-.sidebar.active{
-left:0;
-}
-
-.main-content{
-margin-left:0;
-}
-
-.menu-btn{
-position:fixed;
-top:15px;
-left:15px;
-z-index:1000;
-background:#00bcd4;
-border:none;
-padding:10px 15px;
-border-radius:8px;
+font-size:28px;
 color:white;
-}
+box-shadow:0 10px 25px rgba(0,0,0,.4);
 }
 
-.footer{
-color:#94a3b8;
-font-size:14px;
-margin-top:50px;
+/* GRID FIX */
+
+.project-grid{
+padding:10px 15px 100px;
 }
+
+/* BOTTOM NAV */
+
+.bottom-nav{
+position:fixed;
+bottom:0;
+left:0;
+width:100%;
+background:#0f172a;
+display:flex;
+justify-content:space-around;
+padding:8px 0;
+border-top:1px solid rgba(255,255,255,.08);
+}
+
+.bottom-nav a{
+color:#cbd5e1;
+font-size:12px;
+text-align:center;
+text-decoration:none;
+}
+
+.bottom-nav a span{
+display:block;
+font-size:20px;
+}
+
+/* MOBILE GRID */
+
+@media(max-width:768px){
+
+.project-grid .col{
+flex:0 0 50%;
+max-width:50%;
+}
+
+}
+
 </style>
+
 </head>
 
 <body>
 
-<canvas id="bg"></canvas>
-
-<!-- Mobile Menu Button -->
-<button class="menu-btn d-md-none" onclick="toggleMenu()">☰</button>
-
-<div class="container-fluid">
-<div class="row">
-
-<!-- Sidebar -->
-<div class="col-md-2 sidebar p-4" id="sidebar">
-<h4 class="text-info mb-4">ARVR Studio</h4>
-<a href="/">Dashboard</a>
-<a href="/create">Create Project</a>
-<a href="/wall-ar">Wall AR</a>
-<a href="/logout">Logout</a>
+<div class="header">
+ARVR Studio
 </div>
 
-<!-- Main Content -->
-<div class="col-md-10 p-4 main-content">
+<div class="search-box">
+<input type="text" placeholder="Search projects...">
+</div>
 
-<h1 class="mb-4 text-info">AI Powered AR/VR Dashboard</h1>
+<div class="container-fluid project-grid">
 
-<div class="row g-4">
+<div class="row g-3">
 
 {% for p in projects %}
-<div class="col-sm-6 col-lg-4">
+
+<div class="col">
+
 <div class="card-ar">
 
 <a href="{{ url_for('delete_project', id=p.id) }}"
 onclick="return confirm('Delete project?')"
 class="delete-btn">✕</a>
 
-<h5>{{ p.name }}</h5>
+<h6>{{ p.name }}</h6>
 
 {% if p.type == 'model' %}
 
@@ -180,77 +221,62 @@ ar>
 </model-viewer>
 
 <a href="{{ url_for('model_ar', project_id=p.id) }}"
-class="btn btn-info w-100 mt-3">
-View Model AR
+class="btn btn-ar">
+View AR
 </a>
 
 {% else %}
 
-<img src="{{ p.file_url }}"
-class="img-fluid rounded mb-3"/>
+<img src="{{ p.file_url }}" class="preview">
 
 <a href="{{ url_for('image_ar', project_id=p.id) }}"
-class="btn btn-info w-100">
-View Image AR
+class="btn btn-ar">
+View AR
 </a>
 
 {% endif %}
 
 </div>
+
 </div>
+
 {% endfor %}
 
 </div>
 
-<div class="footer text-center mt-5">
-© 2026 ARVR Studio
 </div>
 
+<!-- Floating Create Button -->
+
+<a href="/create" class="create-btn">
++
+</a>
+
+<!-- Bottom Navigation -->
+
+<div class="bottom-nav">
+
+<a href="/">
+<span>🏠</span>
+Home
+</a>
+
+<a href="/create">
+<span>➕</span>
+Create
+</a>
+
+<a href="/wall-ar">
+<span>🧱</span>
+Wall AR
+</a>
+
+<a href="/logout">
+<span>🚪</span>
+Logout
+</a>
+
 </div>
-</div>
-</div>
-
-<script>
-/* Sidebar toggle mobile */
-function toggleMenu(){
-document.getElementById("sidebar").classList.toggle("active");
-}
-
-/* Background particles */
-const canvas=document.getElementById("bg");
-const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
-
-const renderer=new THREE.WebGLRenderer({canvas:canvas,alpha:true});
-renderer.setSize(window.innerWidth,window.innerHeight);
-
-const geo=new THREE.BufferGeometry();
-const verts=[];
-
-for(let i=0;i<1200;i++){
-verts.push(
-THREE.MathUtils.randFloatSpread(100),
-THREE.MathUtils.randFloatSpread(100),
-THREE.MathUtils.randFloatSpread(100)
-);
-}
-
-geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
-const mat=new THREE.PointsMaterial({color:0x00f0ff,size:0.4});
-const particles=new THREE.Points(geo,mat);
-
-scene.add(particles);
-camera.position.z=50;
-
-function animate(){
-requestAnimationFrame(animate);
-particles.rotation.y+=0.0007;
-renderer.render(scene,camera);
-}
-animate();
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
