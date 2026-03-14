@@ -1,25 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AR Image Viewer</title>
+<title>AR Viewer</title>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
 <style>
 
-/* ================= GLOBAL ================= */
+/* ===== GLOBAL ===== */
+
 html,body{
 margin:0;
 padding:0;
 overflow:hidden;
 background:black;
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+font-family:Segoe UI;
 height:100%;
-perspective:1400px;
 }
 
-/* ================= CAMERA ================= */
+/* ===== CAMERA ===== */
+
 video{
 position:fixed;
 top:0;
@@ -28,89 +30,66 @@ width:100vw;
 height:100vh;
 object-fit:cover;
 z-index:1;
-filter:brightness(.92) contrast(1.05) saturate(1.1);
 }
 
-/* ================= AR IMAGE ================= */
+/* ===== AR UI MESSAGE ===== */
+
+.arUI{
+position:fixed;
+top:20px;
+left:50%;
+transform:translateX(-50%);
+background:rgba(0,0,0,.6);
+color:white;
+padding:12px 24px;
+border-radius:30px;
+font-size:14px;
+z-index:2000;
+backdrop-filter:blur(10px);
+}
+
+/* ===== AR IMAGE ===== */
+
 .arImage{
 position:fixed;
 top:50%;
 left:50%;
 width:320px;
-border-radius:28px;
+border-radius:24px;
 cursor:grab;
-z-index:5;
-transform-style:preserve-3d;
+z-index:10;
 
 box-shadow:
-0 80px 220px rgba(0,0,0,.95),
-0 30px 100px rgba(0,0,0,.8);
+0 40px 120px rgba(0,0,0,.6);
 
-transition:transform .08s ease-out;
+transition:transform .25s cubic-bezier(.25,.8,.25,1);
 }
 
 .arImage img{
 width:100%;
-border-radius:28px;
+border-radius:24px;
+pointer-events:none;
 }
 
-/* ================= DEPTH CONTROL ================= */
-.depthControl{
-position:fixed;
-top:25px;
-left:50%;
-transform:translateX(-50%);
-padding:12px 28px;
-border-radius:50px;
-background:rgba(20,20,30,.6);
-backdrop-filter:blur(20px);
-color:white;
-z-index:1000;
-box-shadow:0 8px 40px rgba(0,0,0,.6);
-}
+/* ===== CAPTURE BUTTON ===== */
 
-.depthControl input{
-width:200px;
-appearance:none;
-height:6px;
-border-radius:10px;
-background:linear-gradient(90deg,#00c6ff,#0072ff);
-outline:none;
-}
-
-.depthControl input::-webkit-slider-thumb{
-appearance:none;
-width:18px;
-height:18px;
-border-radius:50%;
-background:white;
-box-shadow:0 0 15px rgba(0,200,255,.8);
-}
-
-/* ================= CAPTURE BUTTON ================= */
 .captureBtn{
 position:fixed;
 bottom:40px;
 left:50%;
 transform:translateX(-50%);
-background:linear-gradient(135deg,#00c6ff,#0072ff);
+background:#0072ff;
 border:none;
-padding:16px 55px;
-border-radius:60px;
-font-size:17px;
+padding:15px 50px;
+border-radius:50px;
 color:white;
-font-weight:600;
-z-index:2000;   /* VERY IMPORTANT */
-
-box-shadow:
-0 15px 70px rgba(0,150,255,.8),
-0 0 30px rgba(0,200,255,.5);
-
-transition:.25s;
+font-size:18px;
+z-index:2000;
+cursor:pointer;
 }
 
-.captureBtn:active{
-transform:translateX(-50%) scale(.95);
+.captureBtn:hover{
+background:#005be0;
 }
 
 </style>
@@ -121,95 +100,172 @@ transform:translateX(-50%) scale(.95);
 <!-- CAMERA -->
 <video id="cam" autoplay playsinline muted></video>
 
+<!-- UI MESSAGE -->
+<div class="arUI">
+Drag and zoom the image to preview
+</div>
+
 <!-- AR IMAGE -->
 <div class="arImage" id="plate">
-<img src="{{ project.file_url }}">
+<img src="{{ project.file_url }}" crossorigin="anonymous">
 </div>
 
-<!-- DEPTH CONTROL -->
-<div class="depthControl">
-Depth
-<input type="range" min="-300" max="300" value="0" id="depth">
-</div>
-
-<!-- CAPTURE BUTTON -->
+<!-- CAPTURE -->
 <button class="captureBtn" id="captureBtn">
 📸 Capture
 </button>
 
 <script>
 
-/* CAMERA START */
+/* ===== CAMERA ===== */
+
 const cam=document.getElementById("cam");
 
 navigator.mediaDevices.getUserMedia({
 video:{facingMode:"environment"}
-}).then(stream=>{
+})
+.then(stream=>{
 cam.srcObject=stream;
-}).catch(()=>{
+})
+.catch(()=>{
 alert("Camera requires HTTPS.");
 });
 
-/* AR TRANSFORM VARIABLES */
+
+/* ===== AR VARIABLES ===== */
+
 let plate=document.getElementById("plate");
 
 let x=0;
 let y=0;
 let scale=1;
-let depth=0;
 
-/* UPDATE FUNCTION */
+let startX=0;
+let startY=0;
+
+
+/* ===== UPDATE ===== */
+
 function update(){
+
 plate.style.transform=
 `translate(-50%,-50%)
  translate(${x}px,${y}px)
- translateZ(${depth}px)
  scale(${scale})`;
+
 }
 
-/* DRAG */
+
+/* ===== DRAG (MOUSE) ===== */
+
 plate.addEventListener("mousedown",e=>{
-let sx=e.clientX-x;
-let sy=e.clientY-y;
+
+startX=e.clientX-x;
+startY=e.clientY-y;
 
 function move(e){
-x=e.clientX-sx;
-y=e.clientY-sy;
+
+x=e.clientX-startX;
+y=e.clientY-startY;
+
 update();
+
 }
 
 function stop(){
+
 document.removeEventListener("mousemove",move);
 document.removeEventListener("mouseup",stop);
+
 }
 
 document.addEventListener("mousemove",move);
 document.addEventListener("mouseup",stop);
+
 });
 
-/* ZOOM */
+
+/* ===== TOUCH DRAG (MOBILE) ===== */
+
+plate.addEventListener("touchstart",e=>{
+
+let touch=e.touches[0];
+
+startX=touch.clientX-x;
+startY=touch.clientY-y;
+
+});
+
+plate.addEventListener("touchmove",e=>{
+
+let touch=e.touches[0];
+
+x=touch.clientX-startX;
+y=touch.clientY-startY;
+
+update();
+
+});
+
+
+/* ===== ZOOM ===== */
+
 plate.addEventListener("wheel",e=>{
+
 e.preventDefault();
+
 scale+=e.deltaY*-0.001;
+
 scale=Math.max(.3,Math.min(scale,3));
+
 update();
+
 });
 
-/* DEPTH */
-document.getElementById("depth").addEventListener("input",e=>{
-depth=e.target.value;
-update();
+
+/* ===== CAPTURE ===== */
+
+document.getElementById("captureBtn").addEventListener("click",async()=>{
+
+const canvas=document.createElement("canvas");
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+const ctx=canvas.getContext("2d");
+
+/* draw camera */
+
+ctx.drawImage(cam,0,0,canvas.width,canvas.height);
+
+/* capture AR image */
+
+const arCanvas=await html2canvas(plate,{
+backgroundColor:null,
+useCORS:true
 });
 
-/* CAPTURE */
-document.getElementById("captureBtn").addEventListener("click",()=>{
-html2canvas(document.body).then(canvas=>{
-let link=document.createElement("a");
-link.download="AR_Image.png";
+const rect=plate.getBoundingClientRect();
+
+ctx.drawImage(
+arCanvas,
+rect.left,
+rect.top,
+rect.width,
+rect.height
+);
+
+/* download */
+
+const link=document.createElement("a");
+
+link.download="AR_capture.png";
+
 link.href=canvas.toDataURL();
+
 link.click();
+
 });
-});
+
 
 update();
 
